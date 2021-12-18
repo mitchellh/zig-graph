@@ -2,7 +2,7 @@
 
 A Zig library for directed graph data structures and associated algorithms.
 This library can be used for acyclic and cyclic graphs and unweighted and weighted
-edges.
+edges. This library requires Zig 0.9+.
 
 **Warning: This is literally the first piece of Zig code I've ever written
 in my life.** I'm using this project as a way to learn how to do things in
