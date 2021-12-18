@@ -137,6 +137,11 @@ pub fn DirectedGraph(
             }
         }
 
+        /// contains returns true if the graph has the given vertex.
+        pub fn contains(self: *Self, v: T) bool {
+            return self.values.contains(self.ctx.hash(v));
+        }
+
         /// lookup looks up a vertex by hash. The hash is often used
         /// as a result of algorithms such as strongly connected components
         /// since it is easier to work with. This function can be called to
@@ -334,10 +339,14 @@ test "add and remove vertex" {
     var g = gtype.init(testing.allocator);
     defer g.deinit();
 
+    // No vertex
+    try testing.expect(!g.contains("A"));
+
     // Add some nodes
     try g.add("A");
     try g.add("A");
     try g.add("B");
+    try testing.expect(g.contains("A"));
     try testing.expect(g.countVertices() == 2);
     try testing.expect(g.countEdges() == 0);
 
