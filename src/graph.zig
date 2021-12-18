@@ -1,14 +1,9 @@
 const std = @import("std");
-const array_list = std.array_list;
 const hash_map = std.hash_map;
 const math = std.math;
 const testing = std.testing;
 const Allocator = std.mem.Allocator;
 const tarjan = @import("tarjan.zig");
-
-test {
-    _ = tarjan;
-}
 
 /// A directed graph that contains nodes of a given type.
 ///
@@ -213,9 +208,6 @@ pub fn DirectedGraph(
             return count;
         }
 
-        //----------------------------------------------------------------
-        // Cycles
-
         /// Cycles returns the set of cycles (if any).
         pub fn cycles(
             self: *const Self,
@@ -248,9 +240,6 @@ pub fn DirectedGraph(
         ) tarjan.StronglyConnectedComponents {
             return tarjan.stronglyConnectedComponents(self.allocator, self);
         }
-
-        //----------------------------------------------------------------
-        // DFS
 
         /// dfsIterator returns an iterator that iterates all reachable
         /// vertices from "start". Note that the DFSIterator must have
@@ -464,4 +453,8 @@ test "dfs" {
         const expect = [_][]const u8{ "B", "C", "A" };
         try testing.expectEqualSlices([]const u8, &expect, list.items);
     }
+}
+
+test {
+    _ = tarjan;
 }
