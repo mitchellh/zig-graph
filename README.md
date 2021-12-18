@@ -26,6 +26,7 @@ also a lot of room for improvement in performance by various measures.
 * Kahn for topological sorting
 * Shortest path given a topological sort
 * String marshaling for easier debugging
+* "Unmanaged" graph so allocator can be sent to each op
 
 ## Example
 
