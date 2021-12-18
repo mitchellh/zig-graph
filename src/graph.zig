@@ -1,9 +1,14 @@
 const std = @import("std");
-const debug = std.debug;
-const assert = debug.assert;
+const array_list = std.array_list;
 const hash_map = std.hash_map;
+const math = std.math;
 const testing = std.testing;
 const Allocator = std.mem.Allocator;
+const tarjan = @import("tarjan.zig");
+
+test {
+    _ = tarjan;
+}
 
 /// A directed graph that contains nodes of a given type.
 ///
@@ -199,6 +204,14 @@ pub fn DirectedGraph(
 
             return count;
         }
+
+        /// Returns the set of strongly connected components in this graph.
+        /// This allocates memory.
+        pub fn stronglyConnectedComponents(
+            self: *const Self,
+        ) tarjan.StronglyConnectedComponents {
+            return tarjan.stronglyConnectedComponents(self.allocator, self);
+        }
     };
 }
 
@@ -267,4 +280,26 @@ test "reverse" {
     try testing.expect(rev.countVertices() == 2);
     try testing.expect(rev.getEdge("A", "B") == null);
     try testing.expect(rev.getEdge("B", "A").? == 1);
+}
+
+test "cycles and strongly connected components" {
+    const gtype = DirectedGraph([]const u8, std.hash_map.StringContext);
+    var g = gtype.init(testing.allocator);
+    defer g.deinit();
+
+    // Add some nodes
+    try g.add("A");
+    try g.add("B");
+    try g.addEdge("A", "B", 1);
+
+    // Get SCCs
+    var sccs = g.stronglyConnectedComponents();
+    defer sccs.deinit();
+    try testing.expect(sccs.count() == 2);
+
+    // Add a cycle
+    try g.addEdge("B", "A", 1);
+    var sccs2 = g.stronglyConnectedComponents();
+    defer sccs2.deinit();
+    try testing.expect(sccs2.count() == 1);
 }
