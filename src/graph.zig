@@ -213,6 +213,9 @@ pub fn DirectedGraph(
             return count;
         }
 
+        //----------------------------------------------------------------
+        // Cycles
+
         /// Cycles returns the set of cycles (if any).
         pub fn cycles(
             self: *const Self,
@@ -245,6 +248,81 @@ pub fn DirectedGraph(
         ) tarjan.StronglyConnectedComponents {
             return tarjan.stronglyConnectedComponents(self.allocator, self);
         }
+
+        //----------------------------------------------------------------
+        // DFS
+
+        /// dfsIterator returns an iterator that iterates all reachable
+        /// vertices from "start". Note that the DFSIterator must have
+        /// deinit called.
+        pub fn dfsIterator(self: *const Self, start: T) !DFSIterator {
+            const h = self.ctx.hash(start);
+
+            // We need to allocate our stack and visited to proper sizes
+            // up front to ensure we'll never allocate. This can be done
+            // in a more clever way for the stack.
+            const count = self.countVertices();
+            var stack = try std.ArrayList(u64).initCapacity(self.allocator, count);
+            var visited = std.AutoHashMap(u64, bool).init(self.allocator);
+            try visited.ensureTotalCapacity(count);
+
+            return DFSIterator{
+                .g = self,
+                .stack = stack,
+                .visited = visited,
+                .current = h,
+            };
+        }
+
+        pub const DFSIterator = struct {
+            // Not the most efficient data structures for this, I know,
+            // but we can come back and optimize this later since its opaque.
+            //
+            // stack and visited must ensure capacity
+            g: *const Self,
+            stack: std.ArrayList(u64),
+            visited: std.AutoHashMap(u64, bool),
+            current: ?u64,
+
+            // DFSIterator must deinit
+            pub fn deinit(it: *DFSIterator) void {
+                it.stack.deinit();
+                it.visited.deinit();
+            }
+
+            /// next returns the list of hash IDs for the vertex. This should be
+            /// looked up again with the graph to get the actual vertex value.
+            pub fn next(it: *DFSIterator) ?u64 {
+                // If we're out of values, then we're done.
+                if (it.current == null) return null;
+
+                // Our result is our current value
+                const result = it.current orelse unreachable;
+                it.visited.putAssumeCapacity(result, true);
+
+                // Add all adjacent edges to the stack. We do a
+                // visited check here to avoid revisiting vertices
+                if (it.g.adjOut.getPtr(result)) |map| {
+                    var iter = map.keyIterator();
+                    while (iter.next()) |target| {
+                        if (!it.visited.contains(target.*)) {
+                            it.stack.appendAssumeCapacity(target.*);
+                        }
+                    }
+                }
+
+                // Advance to the next value
+                it.current = null;
+                while (it.stack.popOrNull()) |nextVal| {
+                    if (!it.visited.contains(nextVal)) {
+                        it.current = nextVal;
+                        break;
+                    }
+                }
+
+                return result;
+            }
+        };
     };
 }
 
@@ -345,4 +423,45 @@ test "cycles and strongly connected components" {
     var cycles = g.cycles() orelse unreachable;
     defer cycles.deinit();
     try testing.expect(cycles.count() == 1);
+}
+
+test "dfs" {
+    const gtype = DirectedGraph([]const u8, std.hash_map.StringContext);
+    var g = gtype.init(testing.allocator);
+    defer g.deinit();
+
+    // Add some nodes
+    try g.add("A");
+    try g.add("B");
+    try g.add("C");
+    try g.addEdge("B", "C", 1);
+    try g.addEdge("C", "A", 1);
+
+    // DFS from A should only reach A
+    {
+        var list = std.ArrayList([]const u8).init(testing.allocator);
+        defer list.deinit();
+        var iter = try g.dfsIterator("A");
+        defer iter.deinit();
+        while (iter.next()) |value| {
+            try list.append(g.lookup(value).?);
+        }
+
+        const expect = [_][]const u8{"A"};
+        try testing.expectEqualSlices([]const u8, list.items, &expect);
+    }
+
+    // DFS from B
+    {
+        var list = std.ArrayList([]const u8).init(testing.allocator);
+        defer list.deinit();
+        var iter = try g.dfsIterator("B");
+        defer iter.deinit();
+        while (iter.next()) |value| {
+            try list.append(g.lookup(value).?);
+        }
+
+        const expect = [_][]const u8{ "B", "C", "A" };
+        try testing.expectEqualSlices([]const u8, &expect, list.items);
+    }
 }

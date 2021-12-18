@@ -4,6 +4,10 @@ const testing = std.testing;
 const Allocator = std.mem.Allocator;
 
 /// A list of strongly connected components.
+///
+/// This is effectively [][]u64 for a DirectedGraph. The u64 value is the
+/// hash code, NOT the type T. You should use the lookup function to get the
+/// actual vertex.
 pub const StronglyConnectedComponents = struct {
     const Self = @This();
     const Entry = std.ArrayList(u64);
