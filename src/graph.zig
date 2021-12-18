@@ -56,15 +56,19 @@ pub fn DirectedGraph(
                 @compileError("Context is non-zero sized. Use initContext instead.");
             }
 
-            return Self{
+            return initContext(allocator, undefined);
+        }
+
+        /// same as init but for non-zero-sized contexts.
+        pub fn initContext(allocator: Allocator, ctx: Context) Self {
+            return .{
                 .allocator = allocator,
-                .ctx = undefined,
+                .ctx = ctx,
                 .adjOut = AdjMap.init(allocator),
                 .adjIn = AdjMap.init(allocator),
                 .values = ValueMap.init(allocator),
             };
         }
-
         /// deinitialize all the memory associated with the graph. If you
         /// deinitialize the allocator used with this graph you don't need to
         /// call this.
