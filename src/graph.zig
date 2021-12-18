@@ -294,7 +294,7 @@ pub fn DirectedGraph(
             // We could pre-allocate some space here and assume we'll visit
             // the full graph or something. Keeping it simple for now.
             var stack = std.ArrayList(u64).init(self.allocator);
-            var visited = std.AutoHashMap(u64, bool).init(self.allocator);
+            var visited = std.AutoHashMap(u64, void).init(self.allocator);
 
             return DFSIterator{
                 .g = self,
@@ -311,7 +311,7 @@ pub fn DirectedGraph(
             // stack and visited must ensure capacity
             g: *const Self,
             stack: std.ArrayList(u64),
-            visited: std.AutoHashMap(u64, bool),
+            visited: std.AutoHashMap(u64, void),
             current: ?u64,
 
             // DFSIterator must deinit
@@ -328,7 +328,7 @@ pub fn DirectedGraph(
 
                 // Our result is our current value
                 const result = it.current orelse unreachable;
-                try it.visited.put(result, true);
+                try it.visited.put(result, {});
 
                 // Add all adjacent edges to the stack. We do a
                 // visited check here to avoid revisiting vertices
