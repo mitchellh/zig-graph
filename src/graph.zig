@@ -134,6 +134,14 @@ pub fn DirectedGraph(
             }
         }
 
+        /// lookup looks up a vertex by hash. The hash is often used
+        /// as a result of algorithms such as strongly connected components
+        /// since it is easier to work with. This function can be called to
+        /// get the real value.
+        pub fn lookup(self: *Self, hash: u64) ?T {
+            return self.values.get(hash);
+        }
+
         /// add an edge from one node to another
         pub fn addEdge(self: *Self, from: T, to: T, weight: u64) !void {
             const h1 = self.ctx.hash(from);
@@ -314,10 +322,14 @@ test "cycles and strongly connected components" {
 
     // Add some nodes
     try g.add("A");
+    var alone = g.stronglyConnectedComponents();
+    defer alone.deinit();
+    const value = g.lookup(alone.list.items[0].items[0]);
+    try testing.expectEqual(value.?, "A");
+
+    // Add more
     try g.add("B");
     try g.addEdge("A", "B", 1);
-
-    // Get SCCs
     var sccs = g.stronglyConnectedComponents();
     defer sccs.deinit();
     try testing.expect(sccs.count() == 2);
