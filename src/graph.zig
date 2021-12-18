@@ -5,6 +5,10 @@ const testing = std.testing;
 const Allocator = std.mem.Allocator;
 const tarjan = @import("tarjan.zig");
 
+pub const GraphError = error{
+    VertexNotFoundError,
+};
+
 /// A directed graph that contains nodes of a given type.
 ///
 /// The Context is the same as the Context for std.hash_map and must
@@ -96,7 +100,7 @@ pub fn DirectedGraph(
         }
 
         /// Remove a node and all edges to and from the node.
-        pub fn remove(self: *Self, v: T) !void {
+        pub fn remove(self: *Self, v: T) void {
             const h = self.ctx.hash(v);
 
             // Forget this value
@@ -137,22 +141,23 @@ pub fn DirectedGraph(
             return self.values.get(hash);
         }
 
-        /// add an edge from one node to another
+        /// add an edge from one node to another. This will return an
+        /// error if either vertex does not exist.
         pub fn addEdge(self: *Self, from: T, to: T, weight: u64) !void {
             const h1 = self.ctx.hash(from);
             const h2 = self.ctx.hash(to);
 
-            if (self.adjOut.getPtr(h1)) |map| {
-                try map.put(h2, weight);
-            } else unreachable;
+            const mapOut = self.adjOut.getPtr(h1) orelse
+                return GraphError.VertexNotFoundError;
+            const mapIn = self.adjIn.getPtr(h2) orelse
+                return GraphError.VertexNotFoundError;
 
-            if (self.adjIn.getPtr(h2)) |map| {
-                try map.put(h1, weight);
-            } else unreachable;
+            try mapOut.put(h2, weight);
+            try mapIn.put(h1, weight);
         }
 
         /// remove an edge
-        pub fn removeEdge(self: *Self, from: T, to: T) !void {
+        pub fn removeEdge(self: *Self, from: T, to: T) void {
             const h1 = self.ctx.hash(from);
             const h2 = self.ctx.hash(to);
 
@@ -243,9 +248,14 @@ pub fn DirectedGraph(
 
         /// dfsIterator returns an iterator that iterates all reachable
         /// vertices from "start". Note that the DFSIterator must have
-        /// deinit called.
+        /// deinit called. It is an error if start does not exist.
         pub fn dfsIterator(self: *const Self, start: T) !DFSIterator {
             const h = self.ctx.hash(start);
+
+            // Start must exist
+            if (!self.values.contains(h)) {
+                return GraphError.VertexNotFoundError;
+            }
 
             // We need to allocate our stack and visited to proper sizes
             // up front to ensure we'll never allocate. This can be done
@@ -332,7 +342,7 @@ test "add and remove vertex" {
     try testing.expect(g.countEdges() == 1);
 
     // Remove a node
-    try g.remove("A");
+    g.remove("A");
     try testing.expect(g.countVertices() == 1);
 
     // important: removing a node should remove the edge
@@ -356,8 +366,8 @@ test "add and remove edge" {
     try testing.expect(g.getEdge("A", "B").? == 4);
 
     // Remove the node
-    try g.removeEdge("A", "B");
-    try g.removeEdge("A", "B");
+    g.removeEdge("A", "B");
+    g.removeEdge("A", "B");
     try testing.expect(g.countEdges() == 0);
     try testing.expect(g.countVertices() == 2);
 }
