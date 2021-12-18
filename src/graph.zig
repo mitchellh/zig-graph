@@ -205,6 +205,31 @@ pub fn DirectedGraph(
             return count;
         }
 
+        /// Cycles returns the set of cycles (if any).
+        pub fn cycles(
+            self: *const Self,
+        ) ?tarjan.StronglyConnectedComponents {
+            var sccs = self.stronglyConnectedComponents();
+            var i: usize = 0;
+            while (i < sccs.list.items.len) {
+                const current = sccs.list.items[i];
+                if (current.items.len <= 1) {
+                    const old = sccs.list.swapRemove(i);
+                    old.deinit();
+                    continue;
+                }
+
+                i += 1;
+            }
+
+            if (sccs.list.items.len == 0) {
+                sccs.deinit();
+                return null;
+            }
+
+            return sccs;
+        }
+
         /// Returns the set of strongly connected components in this graph.
         /// This allocates memory.
         pub fn stronglyConnectedComponents(
@@ -296,10 +321,16 @@ test "cycles and strongly connected components" {
     var sccs = g.stronglyConnectedComponents();
     defer sccs.deinit();
     try testing.expect(sccs.count() == 2);
+    try testing.expect(g.cycles() == null);
 
     // Add a cycle
     try g.addEdge("B", "A", 1);
     var sccs2 = g.stronglyConnectedComponents();
     defer sccs2.deinit();
     try testing.expect(sccs2.count() == 1);
+
+    // Should have a cycle
+    var cycles = g.cycles() orelse unreachable;
+    defer cycles.deinit();
+    try testing.expect(cycles.count() == 1);
 }

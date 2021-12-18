@@ -209,7 +209,9 @@ test "StronglyConnectedComponents" {
     var iter = sccs.iterator();
     var count: u8 = 0;
     while (iter.next()) |set| {
-        try testing.expect(set.len == 3);
+        const expect = [_]u64{ 1, 2, 3 };
+        try testing.expectEqual(set.len, 3);
+        try testing.expectEqualSlices(u64, set, &expect);
         count += 1;
     }
     try testing.expect(count == 1);
