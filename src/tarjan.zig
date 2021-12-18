@@ -57,6 +57,7 @@ fn stronglyConnectedStep(
     result: *StronglyConnectedComponents,
     current: u64,
 ) u32 {
+    // TODO(mitchellh): I don't like this unreachable here.
     const idx = acc.visit(current) catch unreachable;
     var minIdx = idx;
 
@@ -160,8 +161,4 @@ test {
 
     const v = acc.pop();
     try testing.expect(v == 42);
-}
-
-test "stronglyConnectedComponents" {
-    // Tests are in graph.zig
 }
