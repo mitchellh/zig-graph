@@ -6,10 +6,30 @@ const Allocator = std.mem.Allocator;
 /// A list of strongly connected components.
 pub const StronglyConnectedComponents = struct {
     const Self = @This();
-    const List = std.ArrayList(std.ArrayList(u64));
+    const Entry = std.ArrayList(u64);
+    const List = std.ArrayList(Entry);
 
-    /// The list of components. Do not access this directly.
+    /// The list of components. Do not access this directly. This type
+    /// also owns all the items, so when deinit is called, all items in this
+    /// list will also be deinit-ed.
     list: List,
+
+    /// Iterator is used to iterate through the strongly connected components.
+    pub const Iterator = struct {
+        list: *const List,
+        index: usize = 0,
+
+        /// next returns the list of hash IDs for the vertex. This should be
+        /// looked up again with the graph to get the actual vertex value.
+        pub fn next(it: *Iterator) ?[]u64 {
+            // If we're empty or at the end, we're done.
+            if (it.list.items.len == 0 or it.list.items.len <= it.index) return null;
+
+            // Bump the index, return our value
+            defer it.index += 1;
+            return it.list.items[it.index].items;
+        }
+    };
 
     pub fn init(allocator: Allocator) Self {
         return Self{
@@ -22,6 +42,11 @@ pub const StronglyConnectedComponents = struct {
             v.deinit();
         }
         self.list.deinit();
+    }
+
+    /// Iterate over all the strongly connected components
+    pub fn iterator(self: *const Self) Iterator {
+        return .{ .list = &self.list };
     }
 
     /// The number of distinct strongly connected components.
@@ -146,7 +171,7 @@ pub const sccAcc = struct {
     }
 };
 
-test {
+test "sccAcc" {
     var acc = sccAcc.init(testing.allocator);
     defer acc.deinit();
 
@@ -161,4 +186,31 @@ test {
 
     const v = acc.pop();
     try testing.expect(v == 42);
+}
+
+test "StronglyConnectedComponents" {
+    var sccs = StronglyConnectedComponents.init(testing.allocator);
+    defer sccs.deinit();
+
+    // Initially empty
+    try testing.expect(sccs.count() == 0);
+
+    // Build our entries
+    var entries = StronglyConnectedComponents.Entry.init(testing.allocator);
+    try entries.append(1);
+    try entries.append(2);
+    try entries.append(3);
+    try sccs.list.append(entries);
+
+    // Should have one
+    try testing.expect(sccs.count() == 1);
+
+    // Test iteration
+    var iter = sccs.iterator();
+    var count: u8 = 0;
+    while (iter.next()) |set| {
+        try testing.expect(set.len == 3);
+        count += 1;
+    }
+    try testing.expect(count == 1);
 }
