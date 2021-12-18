@@ -203,6 +203,31 @@ pub fn DirectedGraph(
             };
         }
 
+        /// Create a copy of this graph using the same allocator.
+        pub fn clone(self: *const Self) !Self {
+            return Self{
+                .allocator = self.allocator,
+                .ctx = self.ctx,
+                .adjOut = try cloneAdjMap(&self.adjOut),
+                .adjIn = try cloneAdjMap(&self.adjIn),
+                .values = try self.values.clone(),
+            };
+        }
+
+        /// clone our AdjMap including inner values.
+        fn cloneAdjMap(m: *const AdjMap) !AdjMap {
+            // Clone the outer container
+            var new = try m.clone();
+
+            // Clone all objects
+            var it = new.iterator();
+            while (it.next()) |kv| {
+                try new.put(kv.key_ptr.*, try kv.value_ptr.clone());
+            }
+
+            return new;
+        }
+
         /// The number of vertices in the graph.
         pub fn countVertices(self: *const Self) Size {
             return self.values.count();
@@ -400,6 +425,23 @@ test "reverse" {
     try testing.expect(rev.countVertices() == 2);
     try testing.expect(rev.getEdge("A", "B") == null);
     try testing.expect(rev.getEdge("B", "A").? == 1);
+}
+
+test "clone" {
+    const gtype = DirectedGraph([]const u8, std.hash_map.StringContext);
+    var g = gtype.init(testing.allocator);
+    defer g.deinit();
+
+    // Add some nodes
+    try g.add("A");
+
+    // Clone
+    var g2 = try g.clone();
+    defer g2.deinit();
+
+    try g.add("B");
+    try testing.expect(g.contains("B"));
+    try testing.expect(!g2.contains("B"));
 }
 
 test "cycles and strongly connected components" {
