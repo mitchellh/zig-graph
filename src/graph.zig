@@ -266,13 +266,10 @@ pub fn DirectedGraph(
                 return GraphError.VertexNotFoundError;
             }
 
-            // We need to allocate our stack and visited to proper sizes
-            // up front to ensure we'll never allocate. This can be done
-            // in a more clever way for the stack.
-            const count = self.countVertices();
-            var stack = try std.ArrayList(u64).initCapacity(self.allocator, count);
+            // We could pre-allocate some space here and assume we'll visit
+            // the full graph or something. Keeping it simple for now.
+            var stack = std.ArrayList(u64).init(self.allocator);
             var visited = std.AutoHashMap(u64, bool).init(self.allocator);
-            try visited.ensureTotalCapacity(count);
 
             return DFSIterator{
                 .g = self,
@@ -300,13 +297,13 @@ pub fn DirectedGraph(
 
             /// next returns the list of hash IDs for the vertex. This should be
             /// looked up again with the graph to get the actual vertex value.
-            pub fn next(it: *DFSIterator) ?u64 {
+            pub fn next(it: *DFSIterator) !?u64 {
                 // If we're out of values, then we're done.
                 if (it.current == null) return null;
 
                 // Our result is our current value
                 const result = it.current orelse unreachable;
-                it.visited.putAssumeCapacity(result, true);
+                try it.visited.put(result, true);
 
                 // Add all adjacent edges to the stack. We do a
                 // visited check here to avoid revisiting vertices
@@ -314,7 +311,7 @@ pub fn DirectedGraph(
                     var iter = map.keyIterator();
                     while (iter.next()) |target| {
                         if (!it.visited.contains(target.*)) {
-                            it.stack.appendAssumeCapacity(target.*);
+                            try it.stack.append(target.*);
                         }
                     }
                 }
@@ -455,7 +452,7 @@ test "dfs" {
         defer list.deinit();
         var iter = try g.dfsIterator("A");
         defer iter.deinit();
-        while (iter.next()) |value| {
+        while (try iter.next()) |value| {
             try list.append(g.lookup(value).?);
         }
 
@@ -469,7 +466,7 @@ test "dfs" {
         defer list.deinit();
         var iter = try g.dfsIterator("B");
         defer iter.deinit();
-        while (iter.next()) |value| {
+        while (try iter.next()) |value| {
             try list.append(g.lookup(value).?);
         }
 
