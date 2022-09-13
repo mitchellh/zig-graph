@@ -19,7 +19,7 @@ pub fn DirectedGraph(
     comptime Context: type,
 ) type {
     // This verifies the context has the correct functions (hash and eql)
-    comptime hash_map.verifyContext(Context, T, T, u64);
+    comptime hash_map.verifyContext(Context, T, T, u64, false);
 
     // The adjacency list type is used to map all edges in the graph.
     // The key is the source node. The value is a map where the key is
